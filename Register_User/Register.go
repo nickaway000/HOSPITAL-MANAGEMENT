@@ -7,14 +7,14 @@ import (
 	"net/http"
 	"os"
 
-	_ "github.com/lib/pq"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 var db *sql.DB
 
 func initDB() error {
-	err := godotenv.Load("/Users/nikhil/HOSPITAL-MANAGEMENT/.env")
+	err := godotenv.Load(".env")
 	if err != nil {
 		return fmt.Errorf("error loading .env file: %w", err)
 	}
@@ -38,15 +38,6 @@ func initDB() error {
 
 	log.Println("Successfully connected to the database")
 	return nil
-}
-
-func formHandler(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
-	if err != nil {
-		fmt.Fprintf(w, "Parse form error: %v", err)
-		return
-	}
-	fmt.Fprintf(w, "Form submitted successfully")
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
@@ -111,17 +102,12 @@ func main() {
 		log.Fatalf("Error initializing database: %v", err)
 	}
 
-	fileServer := http.FileServer(http.Dir("/Users/nikhil/HOSPITAL-MANAGEMENT/Static"))
+	fileServer := http.FileServer(http.Dir("Static"))
 	http.Handle("/", fileServer)
 
-	http.HandleFunc("/register", formHandler)
-	http.HandleFunc("/register-submit", registerHandler)
+	http.HandleFunc("/register", registerHandler)
 	http.HandleFunc("/login", loginHandler)
 
 	fmt.Printf("Starting server at 8080 port\n")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
-
-
-
-
