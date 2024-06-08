@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Management - Actions</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #e0f7fa;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .container h2 {
+            margin-bottom: 20px;
+            color: #00796b;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            color: #ffffff;
+            background-color: #00796b;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 16px;
+            margin: 10px;
+        }
+
+        .btn:hover {
+            background-color: #004d40;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Choose Service</h2>
+        <form action="/appointment" method="POST" style="margin-bottom: 20px;">
+            <button type="submit" class="btn">Appointment</button>
+        </form>
+        <form action="/pharmacy" method="POST">
+            <button type="submit" class="btn">Pharmacy</button>
+        </form>
+    </div>
+</body>
+
+</html>
