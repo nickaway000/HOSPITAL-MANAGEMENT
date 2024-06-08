@@ -1,46 +1,34 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	router := gin.Default()
+	router.Static("/Static", "./Static")
 
-	fileServer := http.FileServer(http.Dir("./Register_User"))
-	http.Handle("/", fileServer)
+	// Serve the home page
+	router.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "register.html", nil)
+	})
 
-	http.HandleFunc("/register", loginHandler)
-	http.HandleFunc("/submit", submitHandler)
-	fmt.Println("Server started at http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
-}
+	// Handle form submission or button click
+	router.POST("/submit", func(c *gin.Context) {
+		// Process the form data here
 
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
+		// Redirect to another page
+		c.Redirect(http.StatusFound, "/success")
+	})
 
-	err := r.ParseForm()
-	if err != nil {
-		fmt.Fprintf(w, "Parse form error : %v", err)
-		return
-	}
-}
+	// Serve the success page
+	router.GET("/success", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "service.html", nil)
+	})
 
-func submitHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-
-	email := r.FormValue("email")
-	password := r.FormValue("password")
-
-	// For simplicity, we are just printing the received data.
-	// In a real application, you would validate and store this data securely.
-	fmt.Fprintf(w, "Email: %s\n", email)
-	fmt.Fprintf(w, "Password: %s\n", password)
+	router.LoadHTMLGlob("Static/*")
+	// Run the server
+	router.Run(":8080")
 }
