@@ -1,34 +1,32 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"net/http"
-
-	"github.com/gin-gonic/gin"
 )
 
+func formHandler(w http.ResponseWriter, r *http.Request) {
+
+	err := r.ParseForm()
+	if err != nil {
+		fmt.Fprintf(w, "Parse form error : %v", err)
+		return
+	}
+
+}
+
 func main() {
-	router := gin.Default()
-	router.Static("/Static", "./Static")
+	fileServer := http.FileServer(http.Dir("./Static"))
+	http.Handle("/", fileServer)
 
-	// Serve the home page
-	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "register.html", nil)
-	})
+	http.HandleFunc("/register", formHandler)
+	fmt.Printf("Starting server at 8080 port\n")
 
-	// Handle form submission or button click
-	router.POST("/submit", func(c *gin.Context) {
-		// Process the form data here
+	err := http.ListenAndServe(":8080", nil)
 
-		// Redirect to another page
-		c.Redirect(http.StatusFound, "/success")
-	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	// Serve the success page
-	router.GET("/success", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "service.html", nil)
-	})
-
-	router.LoadHTMLGlob("Static/*")
-	// Run the server
-	router.Run(":8080")
 }
