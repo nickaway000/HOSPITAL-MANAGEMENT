@@ -12,6 +12,10 @@ import (
 	_ "github.com/lib/pq"
 )
 
+type RegisterPageData struct {
+    Error string
+}
+
 var db *sql.DB
 
 func initDB() error {
@@ -56,13 +60,36 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
+	var exists bool
+	err = db.QueryRow("SELECT EXISTS (SELECT 1 FROM users WHERE email=$1)", email).Scan(&exists)
+	if err != nil {
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+	if exists {
+		tmpl := `
+            <html>
+            <head>
+                <script type="text/javascript">
+                    alert("Email already exists");
+                    window.location.href = "/register.html";
+                </script>
+            </head>
+            <body></body>
+            </html>
+        `
+        w.Header().Set("Content-Type", "text/html")
+        fmt.Fprint(w, tmpl)
+        return
+	}
+
+	// Insert the user into the database
 	_, err = db.Exec("INSERT INTO users (email, password) VALUES ($1, $2)", email, password)
 	if err != nil {
 		log.Printf("Error inserting user into database: %v\n", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
-
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
