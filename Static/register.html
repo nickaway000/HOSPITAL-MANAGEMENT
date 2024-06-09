@@ -78,6 +78,11 @@
             text-align: center;
             margin-top: 10px;
         }
+
+        .error-message {
+            color: red;
+            margin-top: 10px;
+        }
     </style>
 </head>
 
@@ -93,6 +98,8 @@
                 <label for="password">Password:</label>
                 <input type="password" id="password" name="password" required>
             </div>
+            <!-- Error message container -->
+            <div class="error-message" id="errorMessage"></div>
             <div class="btn-container">
                 <button type="submit" class="btn">Confirm</button>
             </div>
@@ -101,6 +108,15 @@
             Already a user? <a href="/login.html">Login here</a>
         </div>
     </div>
+
+    <script>
+        // JavaScript to handle displaying the error message
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorMessage = urlParams.get('error');
+        if (errorMessage) {
+            document.getElementById('errorMessage').textContent = errorMessage;
+        }
+    </script>
 </body>
 
 </html>

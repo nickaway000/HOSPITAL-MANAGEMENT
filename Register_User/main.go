@@ -67,19 +67,8 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if exists {
-		tmpl := `
-            <html>
-            <head>
-                <script type="text/javascript">
-                    alert("Email already exists");
-                    window.location.href = "/register.html";
-                </script>
-            </head>
-            <body></body>
-            </html>
-        `
-        w.Header().Set("Content-Type", "text/html")
-        fmt.Fprint(w, tmpl)
+		errorMessage := "Email already exists"
+        http.Redirect(w, r, "/register.html?error="+errorMessage, http.StatusSeeOther)
         return
 	}
 
