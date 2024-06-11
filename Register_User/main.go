@@ -13,7 +13,7 @@ import (
 )
 
 type RegisterPageData struct {
-    Error string
+	Error string
 }
 
 var db *sql.DB
@@ -68,8 +68,8 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if exists {
 		errorMessage := "Email already exists"
-        http.Redirect(w, r, "/register.html?error="+errorMessage, http.StatusSeeOther)
-        return
+		http.Redirect(w, r, "/register.html?error="+errorMessage, http.StatusSeeOther)
+		return
 	}
 
 	// Insert the user into the database
