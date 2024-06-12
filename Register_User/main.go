@@ -18,7 +18,7 @@ import (
 )
 
 type RegisterPageData struct {
-    Error string
+	Error string
 }
 
 var db *sql.DB
