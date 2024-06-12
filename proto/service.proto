@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package hospital;
+option go_package = "/proto";
+
+service HospitalService {
+  rpc Appointment (AppointmentRequest) returns (AppointmentResponse);
+  rpc Pharmacy (PharmacyRequest) returns (PharmacyResponse);
+}
+
+message AppointmentRequest {
+  string id = 1;
+  string email = 2;
+}
+
+message AppointmentResponse {
+  string message = 1;
+}
+
+message PharmacyRequest {
+  string id = 1;
+  string email = 2;
+}
+
+message PharmacyResponse {
+  string message = 1;
+}
