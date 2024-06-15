@@ -19,8 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	HospitalService_Appointment_FullMethodName = "/hospital.HospitalService/Appointment"
-	HospitalService_Pharmacy_FullMethodName    = "/hospital.HospitalService/Pharmacy"
+	HospitalService_Appointment_FullMethodName       = "/hospital.HospitalService/Appointment"
+	HospitalService_Pharmacy_FullMethodName          = "/hospital.HospitalService/Pharmacy"
+	HospitalService_GetAvailableSlots_FullMethodName = "/hospital.HospitalService/GetAvailableSlots"
+	HospitalService_GetAllDoctors_FullMethodName     = "/hospital.HospitalService/GetAllDoctors"
 )
 
 // HospitalServiceClient is the client API for HospitalService service.
@@ -29,6 +31,8 @@ const (
 type HospitalServiceClient interface {
 	Appointment(ctx context.Context, in *AppointmentRequest, opts ...grpc.CallOption) (*AppointmentResponse, error)
 	Pharmacy(ctx context.Context, in *PharmacyRequest, opts ...grpc.CallOption) (*PharmacyResponse, error)
+	GetAvailableSlots(ctx context.Context, in *AvailableSlotsRequest, opts ...grpc.CallOption) (*AvailableSlotsResponse, error)
+	GetAllDoctors(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*DoctorsResponse, error)
 }
 
 type hospitalServiceClient struct {
@@ -59,12 +63,34 @@ func (c *hospitalServiceClient) Pharmacy(ctx context.Context, in *PharmacyReques
 	return out, nil
 }
 
+func (c *hospitalServiceClient) GetAvailableSlots(ctx context.Context, in *AvailableSlotsRequest, opts ...grpc.CallOption) (*AvailableSlotsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AvailableSlotsResponse)
+	err := c.cc.Invoke(ctx, HospitalService_GetAvailableSlots_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hospitalServiceClient) GetAllDoctors(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*DoctorsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DoctorsResponse)
+	err := c.cc.Invoke(ctx, HospitalService_GetAllDoctors_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // HospitalServiceServer is the server API for HospitalService service.
 // All implementations must embed UnimplementedHospitalServiceServer
 // for forward compatibility
 type HospitalServiceServer interface {
 	Appointment(context.Context, *AppointmentRequest) (*AppointmentResponse, error)
 	Pharmacy(context.Context, *PharmacyRequest) (*PharmacyResponse, error)
+	GetAvailableSlots(context.Context, *AvailableSlotsRequest) (*AvailableSlotsResponse, error)
+	GetAllDoctors(context.Context, *Empty) (*DoctorsResponse, error)
 	mustEmbedUnimplementedHospitalServiceServer()
 }
 
@@ -77,6 +103,12 @@ func (UnimplementedHospitalServiceServer) Appointment(context.Context, *Appointm
 }
 func (UnimplementedHospitalServiceServer) Pharmacy(context.Context, *PharmacyRequest) (*PharmacyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Pharmacy not implemented")
+}
+func (UnimplementedHospitalServiceServer) GetAvailableSlots(context.Context, *AvailableSlotsRequest) (*AvailableSlotsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAvailableSlots not implemented")
+}
+func (UnimplementedHospitalServiceServer) GetAllDoctors(context.Context, *Empty) (*DoctorsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAllDoctors not implemented")
 }
 func (UnimplementedHospitalServiceServer) mustEmbedUnimplementedHospitalServiceServer() {}
 
@@ -127,6 +159,42 @@ func _HospitalService_Pharmacy_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HospitalService_GetAvailableSlots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AvailableSlotsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HospitalServiceServer).GetAvailableSlots(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HospitalService_GetAvailableSlots_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HospitalServiceServer).GetAvailableSlots(ctx, req.(*AvailableSlotsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HospitalService_GetAllDoctors_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HospitalServiceServer).GetAllDoctors(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HospitalService_GetAllDoctors_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HospitalServiceServer).GetAllDoctors(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // HospitalService_ServiceDesc is the grpc.ServiceDesc for HospitalService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -141,6 +209,14 @@ var HospitalService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Pharmacy",
 			Handler:    _HospitalService_Pharmacy_Handler,
+		},
+		{
+			MethodName: "GetAvailableSlots",
+			Handler:    _HospitalService_GetAvailableSlots_Handler,
+		},
+		{
+			MethodName: "GetAllDoctors",
+			Handler:    _HospitalService_GetAllDoctors_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

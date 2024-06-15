@@ -21,6 +21,20 @@ type RegisterPageData struct {
 	Error string
 }
 
+type PageData struct {
+	UserID   string
+	UserEmail string
+}
+
+type Doctor struct {
+    ID            int      `json:"id"`
+    Name          string   `json:"name"`
+    Specialty     string   `json:"specialty"`
+    Experience    string   `json:"experience"`
+    PhotoURL      string   `json:"photo_url"`
+    AvailableSlots []string `json:"available_slots"`
+}
+
 var db *sql.DB
 var appointmentClient pb.HospitalServiceClient
 var pharmacyClient pb.HospitalServiceClient
@@ -60,7 +74,6 @@ func initGRPC() error {
 	appointmentClient = pb.NewHospitalServiceClient(appointmentConn)
 	log.Println("Successfully connected to the appointment gRPC server")
 
-	// Initialize the pharmacy gRPC client
 	pharmacyConn, err := grpc.NewClient("localhost:5002", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return fmt.Errorf("did not connect to pharmacy service: %w", err)
@@ -106,7 +119,6 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Store the ID and email in session or cookie for later use
 	http.SetCookie(w, &http.Cookie{
 		Name:  "userID",
 		Value: fmt.Sprintf("%d", id),
@@ -121,16 +133,15 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-
-func servicehandler(w http.ResponseWriter, r *http.Request) {
-    if r.Method == http.MethodGet {
-		tmpl2, err := template.ParseFiles("Static/service.html")
+func serviceHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		tmpl, err := template.ParseFiles("Static/service.html")
 		if err != nil {
 			http.Error(w, "Error loading service page", http.StatusInternalServerError)
 			log.Printf("Error loading service page: %v\n", err)
 			return
 		}
-		tmpl2.Execute(w, nil)
+		tmpl.Execute(w, nil)
 		return
 	}
 	http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -176,7 +187,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set cookies with the user ID and email
 	http.SetCookie(w, &http.Cookie{
 		Name:  "userID",
 		Value: fmt.Sprintf("%d", userID),
@@ -192,76 +202,86 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func appointmentHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-
-	idCookie, err := r.Cookie("userID")
+	userIDCookie, err := r.Cookie("userID")
 	if err != nil {
 		http.Error(w, "Missing user ID", http.StatusBadRequest)
 		return
 	}
-
-	emailCookie, err := r.Cookie("userEmail")
+	userEmailCookie, err := r.Cookie("userEmail")
 	if err != nil {
 		http.Error(w, "Missing user email", http.StatusBadRequest)
 		return
 	}
 
-	id := idCookie.Value
-	email := emailCookie.Value
+	if r.Method == http.MethodPost {
+        err := r.ParseForm()
+        if err != nil {
+            http.Error(w, "Parse form error", http.StatusInternalServerError)
+            return
+        }
 
-	resp, err := appointmentClient.Appointment(context.Background(), &pb.AppointmentRequest{
-		Id:    id,
-		Email: email,
-	})
-	if err != nil {
-		http.Error(w, "Error calling appointment gRPC service", http.StatusInternalServerError)
-		return
-	}
-	fmt.Fprintf(w, "Appointment response: %s", resp.Message)
-	log.Println("Redirecting to appointment.html")
-	http.Redirect(w, r, "/appointment.html", http.StatusSeeOther)
+        doctorName := r.FormValue("doctor")
+        date := r.FormValue("date")
+        time := r.FormValue("time")
+
+        if date == "" {
+            http.Error(w, "Date is required", http.StatusBadRequest)
+            return
+        }
+
+        req := &pb.AppointmentRequest{
+            DoctorName: doctorName,
+            UserId:     userIDCookie.Value,
+            Email:      userEmailCookie.Value,
+            Date:       date,
+            Time:       time,
+        }
+		
+
+        resp, err := appointmentClient.Appointment(context.Background(), req)
+        if err != nil {
+            log.Printf("Failed to create appointment: %v", err)
+            http.Error(w, "Failed to create appointment", http.StatusInternalServerError)
+            return
+        }
+
+        log.Println(resp.Message)
+        http.Redirect(w, r, "/service", http.StatusSeeOther)
+    }
+	
 }
+
 
 func pharmacyHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-
-	idCookie, err := r.Cookie("userID")
+	userIDCookie, err := r.Cookie("userID")
 	if err != nil {
 		http.Error(w, "Missing user ID", http.StatusBadRequest)
 		return
 	}
-
-	emailCookie, err := r.Cookie("userEmail")
+	userEmailCookie, err := r.Cookie("userEmail")
 	if err != nil {
 		http.Error(w, "Missing user email", http.StatusBadRequest)
 		return
 	}
 
-	id := idCookie.Value
-	email := emailCookie.Value
-
-	resp, err := pharmacyClient.Pharmacy(context.Background(), &pb.PharmacyRequest{
-		Id:    id,
-		Email: email,
-	})
-	if err != nil {
-		http.Error(w, "Error calling pharmacy gRPC service", http.StatusInternalServerError)
-		return
+	data := PageData{
+		UserID:   userIDCookie.Value,
+		UserEmail: userEmailCookie.Value,
 	}
-	fmt.Fprintf(w, "Pharmacy response: %s", resp.Message)
-	log.Println("Redirecting to pharmacy.html")
-	http.Redirect(w, r, "/pharmacy.html", http.StatusSeeOther)
+
+	tmpl, err := template.ParseFiles("Static/appointment.html")
+if err != nil {
+    log.Printf("Error parsing pharmacy template: %v\n", err)
+    http.Error(w, "Error loading pharmacy page", http.StatusInternalServerError)
+    return
 }
+
+	tmpl.Execute(w, data)
+}
+
 
 
 func main() {
-
 	err := initDB()
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)
@@ -277,10 +297,10 @@ func main() {
 
 	http.HandleFunc("/register", registerHandler)
 	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/service", servicehandler)
+	http.HandleFunc("/service", serviceHandler)
 	http.HandleFunc("/appointment", appointmentHandler)
 	http.HandleFunc("/pharmacy", pharmacyHandler)
 
-	fmt.Printf("Starting server at 8080 port\n")
+	fmt.Printf("Starting server at port 8080\n")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

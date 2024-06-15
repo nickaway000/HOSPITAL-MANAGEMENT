@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Appointment</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #00796b;
+            margin-bottom: 20px;
+        }
+        .doctor-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        input[type="date"],
+        select,
+        input[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        input[type="submit"] {
+            background-color: #00796b;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        input[type="submit"]:hover {
+            background-color: #005c54;
+        }
+    </style>
+</head>
+<body>
+    <h1>Book Appointment</h1>
+    
+    <div class="doctor-container">
+        <h2 style="color: #00796b;">Dr. John Doe (Cardiology)</h2>
+        <img src="https://i.pravatar.cc/120?img=12" alt="Dr. John Doe" width="100" height="100">
+        <form id="appointmentForm1">
+            <label for="date1">Choose Date:</label>
+            <input type="date" id="date1" name="date" required>
+
+            <label for="time1">Choose Time:</label>
+            <select id="time1" name="time" required>
+                <option value="09:00 AM">09:00 AM</option>
+                <option value="10:00 AM">10:00 AM</option>
+                <option value="11:00 AM">11:00 AM</option>
+            </select>
+
+            <input type="hidden" name="doctor" value="Dr. John Doe">
+            <input type="button" value="Book Appointment" id="bookBtn1">
+        </form>
+    </div>
+
+    <div class="doctor-container">
+        <h2 style="color: #00796b;">Dr. Jane Doe (Neurology)</h2>
+        <img src="https://i.pravatar.cc/120?img=5" alt="Dr. Jane Doe" width="100" height="100">
+        <form id="appointmentForm2">
+            <label for="date2">Choose Date:</label>
+            <input type="date" id="date2" name="date" required>
+
+            <label for="time2">Choose Time:</label>
+            <select id="time2" name="time" required>
+                <option value="02:00 PM">02:00 PM</option>
+                <option value="03:00 PM">03:00 PM</option>
+                <option value="04:00 PM">04:00 PM</option>
+            </select>
+
+            <input type="hidden" name="doctor" value="Dr. Jane Doe">
+            <input type="button" value="Book Appointment" id="bookBtn2">
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('bookBtn1').addEventListener('click', function() {
+                handleSubmit('appointmentForm1');
+            });
+            document.getElementById('bookBtn2').addEventListener('click', function() {
+                handleSubmit('appointmentForm2');
+            });
+        });
+
+        // Object to keep track of booked slots for each date
+        const bookedSlots = {
+            'Dr. John Doe': {},
+            'Dr. Jane Doe': {}
+        };
+
+        // Function to remove booked slot from select options
+        function updateAvailableSlots(doctor, date, timeSelectId) {
+            const timeSelect = document.getElementById(timeSelectId);
+            const bookedTimes = bookedSlots[doctor][date] || [];
+
+            // Remove all options
+            while (timeSelect.options.length > 0) {
+                timeSelect.remove(0);
+            }
+
+            // Add back only available times
+            const allTimes = ['09:00 AM', '10:00 AM', '11:00 AM', '02:00 PM', '03:00 PM', '04:00 PM'];
+            allTimes.forEach(time => {
+                if (!bookedTimes.includes(time)) {
+                    const option = document.createElement('option');
+                    option.value = time;
+                    option.textContent = time;
+                    timeSelect.appendChild(option);
+                }
+            });
+        }
+
+        // Event listener for form submissions
+        function handleSubmit(formId) {
+            const form = document.getElementById(formId);
+            const doctor = form.doctor.value;
+            const date = form.date.value;
+            const time = form.time.value;
+
+            if (date && time) {
+                bookAppointment(doctor, date, time);
+                if (!bookedSlots[doctor][date]) {
+                    bookedSlots[doctor][date] = [];
+                }
+                bookedSlots[doctor][date].push(time);
+                updateAvailableSlots(doctor, date, form.getAttribute('id') === 'appointmentForm1' ? 'time1' : 'time2');
+            } else {
+                alert('Please choose a date and time.');
+            }
+        }
+
+        // Function to book appointment
+        function bookAppointment(doctor, date, time) {
+            fetch('/appointment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    doctor: doctor,
+                    date: date,
+                    time: time
+                })
+            })
+            .then(response => response.text())
+            .then(data => {
+                alert(`Appointment booked for ${doctor} on ${date} at ${time}`);
+                console.log(data); // Log the response from the server
+            })
+            .catch(error => console.error('Error booking appointment:', error));
+        }
+
+        // Event listeners for date change to update available slots
+        document.getElementById('date1').addEventListener('change', function() {
+            const date = this.value;
+            const doctor = 'Dr. John Doe';
+            updateAvailableSlots(doctor, date, 'time1');
+        });
+
+        document.getElementById('date2').addEventListener('change', function() {
+            const date = this.value;
+            const doctor = 'Dr. Jane Doe';
+            updateAvailableSlots(doctor, date, 'time2');
+        });
+    </script>
+</body>
+</html>
