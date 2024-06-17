@@ -98,10 +98,26 @@
             document.getElementById('bookBtn2').addEventListener('click', function() {
                 handleSubmit('appointmentForm2');
             });
+
+            // Load booked slots from localStorage
+            loadBookedSlots();
         });
 
+        // Function to load booked slots from localStorage
+        function loadBookedSlots() {
+            const storedSlots = localStorage.getItem('bookedSlots');
+            if (storedSlots) {
+                bookedSlots = JSON.parse(storedSlots);
+                Object.keys(bookedSlots).forEach(doctor => {
+                    Object.keys(bookedSlots[doctor]).forEach(date => {
+                        updateAvailableSlots(doctor, date, doctor === 'Dr. John Doe' ? 'time1' : 'time2');
+                    });
+                });
+            }
+        }
+
         // Object to keep track of booked slots for each date
-        const bookedSlots = {
+        let bookedSlots = {
             'Dr. John Doe': {},
             'Dr. Jane Doe': {}
         };
@@ -142,6 +158,8 @@
                 }
                 bookedSlots[doctor][date].push(time);
                 updateAvailableSlots(doctor, date, form.getAttribute('id') === 'appointmentForm1' ? 'time1' : 'time2');
+                // Save booked slots to localStorage
+                localStorage.setItem('bookedSlots', JSON.stringify(bookedSlots));
             } else {
                 alert('Please choose a date and time.');
             }
