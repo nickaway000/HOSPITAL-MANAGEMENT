@@ -28,176 +28,170 @@
             font-weight: bold;
             margin-bottom: 5px;
         }
-        input[type="date"],
-        select,
-        input[type="submit"] {
-            width: 100%;
-            padding: 10px;
+        .time-slots {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
             margin-bottom: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
         }
-        input[type="submit"] {
-            background-color: #00796b;
-            color: #fff;
-            border: none;
+        .time-slot {
+            padding: 10px 20px;
+            border: 1px solid #00796b;
+            background-color: #fff;
+            color: #00796b;
+            border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s;
         }
-        input[type="submit"]:hover {
-            background-color: #005c54;
+        .time-slot.booked {
+            background-color: #d3d3d3;
+            color: #fff;
+            cursor: not-allowed;
+        }
+        .time-slot.selected {
+            background-color: #4caf50; /* Green color for selected slot */
+            color: #fff;
+        }
+        .date-picker {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        .date {
+            border: 1px solid #00796b;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .date.selected {
+            background-color: #00796b;
+            color: #fff;
         }
     </style>
+    
 </head>
 <body>
     <h1>Book Appointment</h1>
-    
+
     <div class="doctor-container">
         <h2 style="color: #00796b;">Dr. John Doe (Cardiology)</h2>
         <img src="https://i.pravatar.cc/120?img=12" alt="Dr. John Doe" width="100" height="100">
-        <form id="appointmentForm1">
+        <form id="appointmentForm1" action="/appointment" method="POST">
             <label for="date1">Choose Date:</label>
-            <input type="date" id="date1" name="date" required>
-
-            <label for="time1">Choose Time:</label>
-            <select id="time1" name="time" required>
-                <option value="09:00 AM">09:00 AM</option>
-                <option value="10:00 AM">10:00 AM</option>
-                <option value="11:00 AM">11:00 AM</option>
-            </select>
-
+            <div class="date-picker" id="datePicker1">
+                <!-- Date buttons will be generated here -->
+            </div>
+            <div class="time-slots" id="timeSlots1">
+                <!-- Time slot buttons will be generated here -->
+            </div>
             <input type="hidden" name="doctor" value="Dr. John Doe">
-            <input type="button" value="Book Appointment" id="bookBtn1">
+            <input type="hidden" name="date" id="selectedDate1">
+            <input type="hidden" name="time" id="selectedTime1">
+            <button type="submit">Book Appointment</button>
         </form>
     </div>
 
     <div class="doctor-container">
         <h2 style="color: #00796b;">Dr. Jane Doe (Neurology)</h2>
         <img src="https://i.pravatar.cc/120?img=5" alt="Dr. Jane Doe" width="100" height="100">
-        <form id="appointmentForm2">
+        <form id="appointmentForm2" action="/appointment" method="POST">
             <label for="date2">Choose Date:</label>
-            <input type="date" id="date2" name="date" required>
-
-            <label for="time2">Choose Time:</label>
-            <select id="time2" name="time" required>
-                <option value="02:00 PM">02:00 PM</option>
-                <option value="03:00 PM">03:00 PM</option>
-                <option value="04:00 PM">04:00 PM</option>
-            </select>
-
+            <div class="date-picker" id="datePicker2">
+                <!-- Date buttons will be generated here -->
+            </div>
+            <div class="time-slots" id="timeSlots2">
+                <!-- Time slot buttons will be generated here -->
+            </div>
             <input type="hidden" name="doctor" value="Dr. Jane Doe">
-            <input type="button" value="Book Appointment" id="bookBtn2">
+            <input type="hidden" name="date" id="selectedDate2">
+            <input type="hidden" name="time" id="selectedTime2">
+            <button type="submit">Book Appointment</button>
         </form>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('bookBtn1').addEventListener('click', function() {
-                handleSubmit('appointmentForm1');
-            });
-            document.getElementById('bookBtn2').addEventListener('click', function() {
-                handleSubmit('appointmentForm2');
-            });
+    const doctorContainers = document.querySelectorAll('.doctor-container');
+    doctorContainers.forEach((container, index) => {
+        const datePicker = container.querySelector('.date-picker');
+        const timeSlots = container.querySelector('.time-slots');
+        const doctorName = container.querySelector('input[name="doctor"]').value;
 
-            // Load booked slots from localStorage
-            loadBookedSlots();
+        generateDates(datePicker, index + 1, doctorName, timeSlots);
+    });
+});
+
+function generateDates(datePicker, formIndex, doctorName, timeSlots) {
+    const today = new Date();
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+
+        const dateButton = document.createElement('button');
+        dateButton.type = 'button';
+        dateButton.className = 'date';
+        dateButton.textContent = date.toDateString();
+        dateButton.dataset.date = date.toISOString().split('T')[0];
+
+        dateButton.addEventListener('click', function() {
+            document.querySelectorAll('.date').forEach(btn => btn.classList.remove('selected'));
+            this.classList.add('selected');
+            document.getElementById(`selectedDate${formIndex}`).value = this.dataset.date;
+            fetchBookedSlots(doctorName, this.dataset.date, timeSlots, formIndex);
         });
 
-        // Function to load booked slots from localStorage
-        function loadBookedSlots() {
-            const storedSlots = localStorage.getItem('bookedSlots');
-            if (storedSlots) {
-                bookedSlots = JSON.parse(storedSlots);
-                Object.keys(bookedSlots).forEach(doctor => {
-                    Object.keys(bookedSlots[doctor]).forEach(date => {
-                        updateAvailableSlots(doctor, date, doctor === 'Dr. John Doe' ? 'time1' : 'time2');
-                    });
-                });
-            }
-        }
+        datePicker.appendChild(dateButton);
+    }
+}
 
-        // Object to keep track of booked slots for each date
-        let bookedSlots = {
-            'Dr. John Doe': {},
-            'Dr. Jane Doe': {}
-        };
+function fetchBookedSlots(doctor, date, timeSlots, formIndex) {
+    fetch(`/bookedSlots?doctor=${doctor}&date=${date}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Fetched booked slots:', data);
+            bookedSlots[doctor] = data;
+            generateTimeSlots(doctor, date, timeSlots.id, formIndex);
+        })
+        .catch(error => console.error('Error fetching booked slots:', error));
+}
 
-        // Function to remove booked slot from select options
-        function updateAvailableSlots(doctor, date, timeSelectId) {
-            const timeSelect = document.getElementById(timeSelectId);
-            const bookedTimes = bookedSlots[doctor][date] || [];
+let bookedSlots = {};
 
-            // Remove all options
-            while (timeSelect.options.length > 0) {
-                timeSelect.remove(0);
-            }
+function generateTimeSlots(doctor, date, containerId, formIndex) {
+    const container = document.getElementById(containerId);
+    const dateKey = date + 'T00:00:00Z'; // Modify the date to match the format in the response
+    const bookedTimes = (bookedSlots[doctor][dateKey] || []).map(item => item.split('T')[1].slice(0, 5));
+    console.log('Booked times:', bookedTimes);
+    const allTimes = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'];
 
-            // Add back only available times
-            const allTimes = ['09:00 AM', '10:00 AM', '11:00 AM', '02:00 PM', '03:00 PM', '04:00 PM'];
-            allTimes.forEach(time => {
-                if (!bookedTimes.includes(time)) {
-                    const option = document.createElement('option');
-                    option.value = time;
-                    option.textContent = time;
-                    timeSelect.appendChild(option);
+    container.innerHTML = '';
+
+    allTimes.forEach(time => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'time-slot';
+        button.textContent = time;
+
+        if (bookedTimes.includes(time)) {
+            button.classList.add('booked', 'disabled');
+            button.disabled = true;
+        } else {
+            button.addEventListener('click', function() {
+                if (!this.classList.contains('selected')) {
+                    document.querySelectorAll(`#${containerId} .time-slot`).forEach(btn => btn.classList.remove('selected'));
+                    this.classList.add('selected');
+                    document.getElementById(`selectedTime${formIndex}`).value = this.textContent;
                 }
             });
         }
+        container.appendChild(button);
+    });
+}
 
-        // Event listener for form submissions
-        function handleSubmit(formId) {
-            const form = document.getElementById(formId);
-            const doctor = form.doctor.value;
-            const date = form.date.value;
-            const time = form.time.value;
-
-            if (date && time) {
-                bookAppointment(doctor, date, time);
-                if (!bookedSlots[doctor][date]) {
-                    bookedSlots[doctor][date] = [];
-                }
-                bookedSlots[doctor][date].push(time);
-                updateAvailableSlots(doctor, date, form.getAttribute('id') === 'appointmentForm1' ? 'time1' : 'time2');
-                // Save booked slots to localStorage
-                localStorage.setItem('bookedSlots', JSON.stringify(bookedSlots));
-            } else {
-                alert('Please choose a date and time.');
-            }
-        }
-
-        // Function to book appointment
-        function bookAppointment(doctor, date, time) {
-            fetch('/appointment', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: new URLSearchParams({
-                    doctor: doctor,
-                    date: date,
-                    time: time
-                })
-            })
-            .then(response => response.text())
-            .then(data => {
-                alert(`Appointment booked for ${doctor} on ${date} at ${time}`);
-                console.log(data); // Log the response from the server
-            })
-            .catch(error => console.error('Error booking appointment:', error));
-        }
-
-        // Event listeners for date change to update available slots
-        document.getElementById('date1').addEventListener('change', function() {
-            const date = this.value;
-            const doctor = 'Dr. John Doe';
-            updateAvailableSlots(doctor, date, 'time1');
-        });
-
-        document.getElementById('date2').addEventListener('change', function() {
-            const date = this.value;
-            const doctor = 'Dr. Jane Doe';
-            updateAvailableSlots(doctor, date, 'time2');
-        });
     </script>
+    
+        
 </body>
 </html>

@@ -3,54 +3,32 @@ syntax = "proto3";
 package hospital;
 option go_package = "/proto";
 
-service HospitalService {
-  rpc Appointment (AppointmentRequest) returns (AppointmentResponse);
-  rpc Pharmacy (PharmacyRequest) returns (PharmacyResponse);
-  rpc GetAvailableSlots (AvailableSlotsRequest) returns (AvailableSlotsResponse);
-  rpc GetAllDoctors (Empty) returns (DoctorsResponse);
 
+service HospitalService {
+    rpc Appointment(AppointmentRequest) returns (AppointmentResponse);
+    rpc GetBookedSlots(GetBookedSlotsRequest) returns (GetBookedSlotsResponse);
 }
 
 message AppointmentRequest {
-  string doctor_name = 1;
-  string user_id = 2;
-  string email = 3;
-  string date = 4;
-  string time = 5;
+    string doctorName = 1;
+    string userId = 2;
+    string email = 3;
+    string date = 4;
+    string time = 5;
 }
 
 message AppointmentResponse {
-  string message = 1;
+    string message = 1;
 }
 
-message AvailableSlotsRequest {
-  string doctor_id = 1;
+message GetBookedSlotsRequest {
+    string doctorName = 1;
 }
 
-message AvailableSlotsResponse {
-  repeated string slots = 1;
+message GetBookedSlotsResponse {
+    map<string, TimeSlots> slots = 1;
 }
 
-message Empty {}
-
-message Doctor {
-  int32 id = 1;
-  string name = 2;
-  string specialty = 3;
-  string experience = 4;
-  string photo_url = 5;
-  repeated string available_slots = 6;
-}
-
-message DoctorsResponse {
-  repeated Doctor doctors = 1;
-}
-
-message PharmacyRequest {
-  string id = 1;
-  string email = 2;
-}
-
-message PharmacyResponse {
-  string message = 1;
+message TimeSlots {
+    repeated string times = 1;
 }

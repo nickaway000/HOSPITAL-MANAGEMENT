@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -67,14 +68,14 @@ func initDB() error {
 }
 
 func initGRPC() error {
-	appointmentConn, err := grpc.NewClient("localhost:5001", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	appointmentConn, err := grpc.Dial("localhost:5001", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return fmt.Errorf("did not connect to appointment service: %w", err)
 	}
 	appointmentClient = pb.NewHospitalServiceClient(appointmentConn)
 	log.Println("Successfully connected to the appointment gRPC server")
 
-	pharmacyConn, err := grpc.NewClient("localhost:5002", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	pharmacyConn, err := grpc.Dial("localhost:5002", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return fmt.Errorf("did not connect to pharmacy service: %w", err)
 	}
@@ -202,18 +203,42 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func appointmentHandler(w http.ResponseWriter, r *http.Request) {
-	userIDCookie, err := r.Cookie("userID")
-	if err != nil {
-		http.Error(w, "Missing user ID", http.StatusBadRequest)
-		return
-	}
-	userEmailCookie, err := r.Cookie("userEmail")
-	if err != nil {
-		http.Error(w, "Missing user email", http.StatusBadRequest)
-		return
-	}
+    log.Println("AppointmentHandler called")  // Debug log
 
-	if r.Method == http.MethodPost {
+    userIDCookie, err := r.Cookie("userID")
+    if err != nil {
+        http.Error(w, "Missing user ID", http.StatusBadRequest)
+        return
+    }
+    userEmailCookie, err := r.Cookie("userEmail")
+    if err != nil {
+        http.Error(w, "Missing user email", http.StatusBadRequest)
+        return
+    }
+
+    log.Println("Cookies:", userIDCookie, userEmailCookie)  // Debug log
+
+    if r.Method == http.MethodGet {
+        tmpl, err := template.ParseFiles("Static/appointment.html")
+        if err != nil {
+            log.Printf("Error parsing appointment template: %v\n", err)
+            http.Error(w, "Error loading appointment page", http.StatusInternalServerError)
+            return
+        }
+
+        data := struct {
+            UserID    string
+            UserEmail string
+        }{
+            UserID:    userIDCookie.Value,
+            UserEmail: userEmailCookie.Value,
+        }
+
+        tmpl.Execute(w, data)
+        return
+    }
+
+    if r.Method == http.MethodPost {
         err := r.ParseForm()
         if err != nil {
             http.Error(w, "Parse form error", http.StatusInternalServerError)
@@ -229,6 +254,14 @@ func appointmentHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
+        if time == "" {
+            http.Error(w, "Time is required", http.StatusBadRequest)
+            return
+        }
+
+        // Add debug log for form values
+        log.Println("Form values:", doctorName, date, time)
+
         req := &pb.AppointmentRequest{
             DoctorName: doctorName,
             UserId:     userIDCookie.Value,
@@ -236,7 +269,8 @@ func appointmentHandler(w http.ResponseWriter, r *http.Request) {
             Date:       date,
             Time:       time,
         }
-		
+
+        log.Println("AppointmentClient:", appointmentClient)  // Debug log
 
         resp, err := appointmentClient.Appointment(context.Background(), req)
         if err != nil {
@@ -248,7 +282,47 @@ func appointmentHandler(w http.ResponseWriter, r *http.Request) {
         log.Println(resp.Message)
         http.Redirect(w, r, "/service", http.StatusSeeOther)
     }
-	
+}
+
+func bookedSlotsHandler(w http.ResponseWriter, r *http.Request) {
+    doctorName := r.URL.Query().Get("doctor")
+    if doctorName == "" {
+        http.Error(w, "Doctor name is required", http.StatusBadRequest)
+        return
+    }
+
+    query := "SELECT date, time FROM appointments WHERE doctor_name = $1 AND status = 'BOOKED'"
+    rows, err := db.Query(query, doctorName)
+    if err != nil {
+        http.Error(w, fmt.Sprintf("Failed to fetch booked slots: %v", err), http.StatusInternalServerError)
+        log.Printf("Error fetching booked slots: %v", err)
+        return
+    }
+    defer rows.Close()
+
+    bookedSlots := make(map[string][]string)
+    for rows.Next() {
+        var slotDate, time string
+        err := rows.Scan(&slotDate, &time)
+        if err != nil {
+            http.Error(w, fmt.Sprintf("Failed to scan row: %v", err), http.StatusInternalServerError)
+            log.Printf("Failed to scan row: %v", err)
+            return
+        }
+        bookedSlots[slotDate] = append(bookedSlots[slotDate], time)
+    }
+
+    log.Println("Booked slots fetched")
+
+    w.Header().Set("Content-Type", "application/json")
+    err = json.NewEncoder(w).Encode(bookedSlots)
+    if err != nil {
+        http.Error(w, fmt.Sprintf("Error encoding booked slots: %v", err), http.StatusInternalServerError)
+        log.Printf("Error encoding booked slots: %v", err)
+        return
+    }
+
+    log.Println("Booked slots sent")
 }
 
 
@@ -275,10 +349,10 @@ if err != nil {
     http.Error(w, "Error loading pharmacy page", http.StatusInternalServerError)
     return
 }
+log.Println("Pharmacy called")
 
 	tmpl.Execute(w, data)
 }
-
 
 
 func main() {
@@ -300,6 +374,7 @@ func main() {
 	http.HandleFunc("/service", serviceHandler)
 	http.HandleFunc("/appointment", appointmentHandler)
 	http.HandleFunc("/pharmacy", pharmacyHandler)
+	http.HandleFunc("/bookedSlots", bookedSlotsHandler)
 
 	fmt.Printf("Starting server at port 8080\n")
 	log.Fatal(http.ListenAndServe(":8080", nil))

@@ -69,7 +69,7 @@ func (s *appointmentServer) saveAppointment(req *pb.AppointmentRequest) error {
 	return nil
 }
 
-func startAppointmentServer() {
+func main() {
 	err := initDB()
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)

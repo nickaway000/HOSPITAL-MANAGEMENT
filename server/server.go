@@ -8,7 +8,7 @@ import (
 	"syscall"
 )
 
-func main() {
+//func main() {
 	go startAppointmentServer()
 	go startPharmacyServer()
 
