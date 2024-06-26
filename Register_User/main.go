@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	pb "shubam/proto"
 
@@ -25,6 +26,15 @@ type RegisterPageData struct {
 type PageData struct {
 	UserID   string
 	UserEmail string
+	Appointments []Appointment
+}
+
+type Appointment struct {
+    DoctorName string
+    Degree     string
+    Experience string
+    Date       string
+    Time       string
 }
 
 type Doctor struct {
@@ -280,7 +290,7 @@ func appointmentHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         log.Println(resp.Message)
-        http.Redirect(w, r, "/service", http.StatusSeeOther)
+        http.Redirect(w, r, "/profile", http.StatusSeeOther)
     }
 }
 
@@ -323,6 +333,79 @@ func bookedSlotsHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     log.Println("Booked slots sent")
+}
+
+func formatDate(date string) string {
+    t, _ := time.Parse(time.RFC3339, date)
+    return t.Format("2006-01-02")
+}
+
+func formatTime(timeStr string) string {
+    t, _ := time.Parse(time.RFC3339, timeStr)
+    return t.Format("15:04")
+}
+
+func profileHandler(w http.ResponseWriter, r *http.Request) {
+    userIDCookie, err := r.Cookie("userID")
+    if err != nil {
+        http.Error(w, "Missing user ID", http.StatusBadRequest)
+        return
+    }
+    userEmailCookie, err := r.Cookie("userEmail")
+    if err != nil {
+        http.Error(w, "Missing user email", http.StatusBadRequest)
+        return
+    }
+
+    userID := userIDCookie.Value
+    userEmail := userEmailCookie.Value
+    query := `
+        SELECT doctor_name, date, time 
+        FROM appointments 
+        WHERE user_id = $1 AND date >= CURRENT_DATE
+        ORDER BY date, time`
+
+    rows, err := db.Query(query, userID)
+    if err != nil {
+        log.Printf("Error querying appointments: %v\n", err)
+        http.Error(w, "Server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var appointments []Appointment
+    for rows.Next() {
+        var appointment Appointment
+        if err := rows.Scan(&appointment.DoctorName, &appointment.Date, &appointment.Time); err != nil {
+            log.Printf("Error scanning appointment: %v\n", err)
+            http.Error(w, "Server error", http.StatusInternalServerError)
+            return
+        }
+        appointment.Date = formatDate(appointment.Date)
+        appointment.Time = formatTime(appointment.Time)
+        appointments = append(appointments, appointment)
+    }
+
+    if err := rows.Err(); err != nil {
+        log.Printf("Error iterating appointments: %v\n", err)
+        http.Error(w, "Server error", http.StatusInternalServerError)
+        return
+    }
+
+    data := PageData{
+        UserID:       userID,
+        UserEmail:    userEmail,
+        Appointments: appointments,
+    }
+
+    tmpl, err := template.ParseFiles("Static/profile.html")
+    if err != nil {
+        log.Printf("Error loading profile page template: %v\n", err)
+        http.Error(w, "Error loading profile page", http.StatusInternalServerError)
+        return
+    }
+
+    tmpl.Execute(w, data)
 }
 
 
@@ -375,6 +458,7 @@ func main() {
 	http.HandleFunc("/appointment", appointmentHandler)
 	http.HandleFunc("/pharmacy", pharmacyHandler)
 	http.HandleFunc("/bookedSlots", bookedSlotsHandler)
+	http.HandleFunc("/profile", profileHandler)
 
 	fmt.Printf("Starting server at port 8080\n")
 	log.Fatal(http.ListenAndServe(":8080", nil))
