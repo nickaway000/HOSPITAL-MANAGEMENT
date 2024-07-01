@@ -57,7 +57,7 @@
         }
         th {
             background-color: #f2f2f2;
-            color:#00796b;
+            color: #00796b;
         }
         tr:hover {
             background-color: #f1f1f1;
@@ -86,7 +86,43 @@
             max-width: 200px;
             margin: 20px auto;
         }
+        .cancel-btn {
+            background-color: red;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .cancelled-btn {
+            background-color: grey;
+            cursor: not-allowed;
+        }
     </style>
+    <script>
+        async function cancelAppointment(button) {
+            const appointmentID = button.getAttribute('data-id');
+            try {
+                const response = await fetch('/cancel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ id: appointmentID })
+                });
+                if (response.ok) {
+                    button.innerHTML = 'Cancelled';
+                    button.disabled = true;
+                    button.classList.add('cancelled-btn');
+                } else {
+                    alert('Failed to cancel appointment');
+                }
+            } catch (error) {
+                console.error('Error cancelling appointment:', error);
+                alert('An error occurred while cancelling the appointment');
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -101,6 +137,7 @@
                     <th><i class="fas fa-user-md"></i> Doctor Name</th>
                     <th><i class="fas fa-calendar-day"></i> Date</th>
                     <th><i class="fas fa-clock"></i> Time</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -109,6 +146,7 @@
                     <td>{{.DoctorName}}</td>
                     <td>{{.Date}}</td>
                     <td>{{.Time}}</td>
+                    <td><button class="cancel-btn" data-id="{{.ID}}" onclick="cancelAppointment(this)">Cancel</button></td>
                 </tr>
                 {{end}}
             </tbody>

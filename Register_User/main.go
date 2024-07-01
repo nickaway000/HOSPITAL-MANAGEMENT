@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	pb "shubam/proto"
@@ -30,6 +31,7 @@ type PageData struct {
 }
 
 type Appointment struct {
+	ID         int
     DoctorName string
     Degree     string
     Experience string
@@ -360,7 +362,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
     userID := userIDCookie.Value
     userEmail := userEmailCookie.Value
     query := `
-        SELECT doctor_name, date, time 
+        SELECT id, doctor_name, date, time 
         FROM appointments 
         WHERE user_id = $1 AND date >= CURRENT_DATE
         ORDER BY date, time`
@@ -376,7 +378,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
     var appointments []Appointment
     for rows.Next() {
         var appointment Appointment
-        if err := rows.Scan(&appointment.DoctorName, &appointment.Date, &appointment.Time); err != nil {
+        if err := rows.Scan(&appointment.ID, &appointment.DoctorName, &appointment.Date, &appointment.Time); err != nil {
             log.Printf("Error scanning appointment: %v\n", err)
             http.Error(w, "Server error", http.StatusInternalServerError)
             return
@@ -408,6 +410,56 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
     tmpl.Execute(w, data)
 }
 
+func cancelHandler(w http.ResponseWriter, r *http.Request) {
+    log.Print("cancel called")
+
+    var req struct {
+        ID string `json:"id"` // Change ID to string type
+    }
+
+    // Decode the request body
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        log.Printf("Invalid request body: %v\n", err)
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    log.Printf("Decoded request: %+v\n", req)
+
+    // Convert ID from string to int
+    appointmentID, err := strconv.Atoi(req.ID)
+    if err != nil {
+        log.Printf("Error converting ID to integer: %v\n", err)
+        http.Error(w, "Invalid appointment ID", http.StatusBadRequest)
+        return
+    }
+
+    // Execute the database query
+    query := `DELETE FROM appointments WHERE id = $1`
+    result, err := db.Exec(query, appointmentID)
+    if err != nil {
+        log.Printf("Error cancelling appointment: %v\n", err)
+        http.Error(w, "Server error", http.StatusInternalServerError)
+        return
+    }
+
+    // Check the number of affected rows
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        log.Printf("Error fetching rows affected: %v\n", err)
+        http.Error(w, "Server error", http.StatusInternalServerError)
+        return
+    }
+
+    if rowsAffected == 0 {
+        log.Printf("No appointment found with ID: %d\n", appointmentID)
+        http.Error(w, "Appointment not found", http.StatusNotFound)
+        return
+    }
+
+    log.Printf("Appointment with ID %d cancelled successfully\n", appointmentID)
+    w.WriteHeader(http.StatusOK)
+}
 
 func pharmacyHandler(w http.ResponseWriter, r *http.Request) {
 	userIDCookie, err := r.Cookie("userID")
@@ -438,6 +490,34 @@ log.Println("Pharmacy called")
 }
 
 
+func inventoryHandler(w http.ResponseWriter, r *http.Request) {
+	userIDCookie, err := r.Cookie("userID")
+	if err != nil {
+		http.Error(w, "Missing user ID", http.StatusBadRequest)
+		return
+	}
+	userEmailCookie, err := r.Cookie("userEmail")
+	if err != nil {
+		http.Error(w, "Missing user email", http.StatusBadRequest)
+		return
+	}
+
+	data := PageData{
+		UserID:   userIDCookie.Value,
+		UserEmail: userEmailCookie.Value,
+	}
+
+	tmpl, err := template.ParseFiles("Static/pharmacy.html")
+if err != nil {
+    log.Printf("Error parsing pharmacy template: %v\n", err)
+    http.Error(w, "Error loading pharmacy page", http.StatusInternalServerError)
+    return
+}
+log.Println("Inventory called")
+
+	tmpl.Execute(w, data)
+}
+
 func main() {
 	err := initDB()
 	if err != nil {
@@ -458,7 +538,9 @@ func main() {
 	http.HandleFunc("/appointment", appointmentHandler)
 	http.HandleFunc("/pharmacy", pharmacyHandler)
 	http.HandleFunc("/bookedSlots", bookedSlotsHandler)
+	http.HandleFunc("/cancel", cancelHandler)
 	http.HandleFunc("/profile", profileHandler)
+	http.HandleFunc("/inventory", inventoryHandler)
 
 	fmt.Printf("Starting server at port 8080\n")
 	log.Fatal(http.ListenAndServe(":8080", nil))
